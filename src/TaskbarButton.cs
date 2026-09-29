@@ -39,8 +39,6 @@ namespace AppLauncher
         private readonly Timer timer;
         private readonly float scale;
         private readonly uint taskbarCreatedMessage;
-        private readonly NativeMethods.WinEventDelegate foregroundHookProc; // kept alive for the native hook
-        private IntPtr foregroundHook;
 
         private Image icon;
         private bool iconIsMask;
@@ -66,10 +64,8 @@ namespace AppLauncher
             LoadButtonIcon();
             taskbarCreatedMessage = NativeMethods.RegisterWindowMessage("TaskbarCreated");
 
-            timer = new Timer { Interval = 300 };
+            timer = new Timer { Interval = 150 };
             timer.Tick += delegate { UpdatePlacement(); };
-
-            foregroundHookProc = OnForegroundChanged;
 
             // If the window is ever closed (e.g. Alt+F4), exit instead of lingering invisibly.
             FormClosed += delegate { Application.ExitThread(); };
@@ -79,9 +75,6 @@ namespace AppLauncher
         {
             // Create the window without showing it; UpdatePlacement shows it once the taskbar is found.
             IntPtr unused = Handle;
-            foregroundHook = NativeMethods.SetWinEventHook(
-                NativeMethods.EVENT_SYSTEM_FOREGROUND, NativeMethods.EVENT_SYSTEM_FOREGROUND,
-                IntPtr.Zero, foregroundHookProc, 0, 0, NativeMethods.WINEVENT_OUTOFCONTEXT);
             UpdatePlacement();
             timer.Start();
         }
@@ -104,11 +97,6 @@ namespace AppLauncher
 
         protected override void Dispose(bool disposing)
         {
-            if (foregroundHook != IntPtr.Zero)
-            {
-                NativeMethods.UnhookWinEvent(foregroundHook);
-                foregroundHook = IntPtr.Zero;
-            }
             if (disposing)
             {
                 timer.Dispose();
@@ -195,13 +183,6 @@ namespace AppLauncher
 
             NativeMethods.RECT r;
             return !NativeMethods.GetWindowRect(fg, out r) || !r.ToRectangle().IntersectsWith(Bounds);
-        }
-
-        private void OnForegroundChanged(IntPtr hook, uint eventType, IntPtr hwnd,
-            int idObject, int idChild, uint thread, uint time)
-        {
-            UpdatePlacement();
-            if (Visible && ShouldStayOnTop()) BringAboveTaskbar();
         }
 
         private void BringAboveTaskbar()

@@ -5,13 +5,19 @@
 // ships with every Windows install (see build.bat).
 
 using System;
+using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-[assembly: System.Reflection.AssemblyTitle("AppLauncher")]
-[assembly: System.Reflection.AssemblyProduct("AppLauncher")]
-[assembly: System.Reflection.AssemblyVersion("3.0.0.0")]
+[assembly: AssemblyTitle("AppLauncher")]
+[assembly: AssemblyDescription("Taskbar button that opens a list of your favourite apps")]
+[assembly: AssemblyCompany("AppLauncher")]
+[assembly: AssemblyProduct("AppLauncher")]
+[assembly: AssemblyCopyright("Copyright (c) 2026")]
+[assembly: AssemblyVersion("3.1.0.0")]
+[assembly: AssemblyFileVersion("3.1.0.0")]
 
 namespace AppLauncher
 {
@@ -29,6 +35,7 @@ namespace AppLauncher
                 Application.SetCompatibleTextRenderingDefault(false);
 
                 Settings settings = Settings.Load();
+                Autostart.MigrateFromRegistry();
 
                 // First run: start with Windows from now on and write out the default settings.
                 if (settings.IsFirstRun)
@@ -48,35 +55,65 @@ namespace AppLauncher
         }
     }
 
+    /// <summary>"Start with Windows" = a shortcut in the user's Startup folder (visible in Task Manager > Startup).</summary>
     internal static class Autostart
     {
-        private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        private const string OldRunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string ValueName = "AppLauncher";
 
-        private static string Command
+        private static string ShortcutPath
         {
-            get { return "\"" + Application.ExecutablePath + "\""; }
+            get
+            {
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "AppLauncher.lnk");
+            }
         }
 
         public static bool IsEnabled
         {
-            get
-            {
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RunKey))
-                {
-                    string value = key == null ? null : key.GetValue(ValueName) as string;
-                    return value != null && string.Equals(value, Command, StringComparison.OrdinalIgnoreCase);
-                }
-            }
+            get { return File.Exists(ShortcutPath); }
         }
 
         public static void Set(bool enabled)
         {
-            using (RegistryKey key = Registry.CurrentUser.CreateSubKey(RunKey))
+            if (!enabled)
             {
-                if (enabled) key.SetValue(ValueName, Command);
-                else key.DeleteValue(ValueName, false);
+                if (File.Exists(ShortcutPath)) File.Delete(ShortcutPath);
+                return;
             }
+
+            object shell = null, link = null;
+            try
+            {
+                Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+                shell = Activator.CreateInstance(shellType);
+                link = shellType.InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { ShortcutPath });
+                Type linkType = link.GetType();
+                linkType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, link, new object[] { Application.ExecutablePath });
+                linkType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, link, new object[] { Path.GetDirectoryName(Application.ExecutablePath) });
+                linkType.InvokeMember("Description", BindingFlags.SetProperty, null, link, new object[] { "AppLauncher" });
+                linkType.InvokeMember("Save", BindingFlags.InvokeMethod, null, link, null);
+            }
+            finally
+            {
+                if (link != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(link);
+                if (shell != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(shell);
+            }
+        }
+
+        // Earlier builds started with Windows through the registry; move that over to the Startup folder.
+        public static void MigrateFromRegistry()
+        {
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(OldRunKey, true))
+                {
+                    if (key == null || key.GetValue(ValueName) == null) return;
+                    key.DeleteValue(ValueName, false);
+                }
+                Set(true);
+            }
+            catch { }
         }
     }
 }

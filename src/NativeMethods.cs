@@ -20,9 +20,6 @@ namespace AppLauncher
         public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
         public const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10, SWP_NOOWNERZORDER = 0x200;
 
-        public const uint EVENT_SYSTEM_FOREGROUND = 0x3;
-        public const uint WINEVENT_OUTOFCONTEXT = 0x0;
-
         public const int ULW_ALPHA = 0x2;
         public const byte AC_SRC_OVER = 0x0, AC_SRC_ALPHA = 0x1;
 
@@ -47,9 +44,6 @@ namespace AppLauncher
         {
             public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat;
         }
-
-        public delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
-            int idObject, int idChild, uint idEventThread, uint dwmsEventTime);
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
@@ -77,13 +71,6 @@ namespace AppLauncher
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         public static extern uint RegisterWindowMessage(string lpString);
-
-        [DllImport("user32.dll")]
-        public static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
-            WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
-
-        [DllImport("user32.dll")]
-        public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
 
         [DllImport("shell32.dll")]
         public static extern int SHQueryUserNotificationState(out int pquns);
