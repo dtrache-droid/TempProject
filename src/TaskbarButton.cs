@@ -37,6 +37,7 @@ namespace AppLauncher
 
         private IntPtr taskbar;
         private Rectangle taskbarRect;
+        private Rectangle visual; // the icon area inside this (larger, invisible) click area
         private bool hover, pressed, menuOpen, suppressClick;
         private int lastMenuClosedAt = Environment.TickCount - 10000;
 
@@ -147,10 +148,35 @@ namespace AppLauncher
             if (tb != taskbarRect || !Visible)
             {
                 taskbarRect = tb;
+                Rectangle screen = Screen.FromRectangle(tb).Bounds;
                 int margin = Px(MarginPx);
-                Bounds = tb.Width >= tb.Height
-                    ? new Rectangle(tb.Left + margin, tb.Top, tb.Height, tb.Height)   // bottom/top taskbar: far left
-                    : new Rectangle(tb.Left, tb.Top + margin, tb.Width, tb.Width);   // side taskbar: very top
+                bool horizontal = tb.Width >= tb.Height;
+                int slack = 2;
+
+                // What you see: a square icon area in the taskbar's far-left (or top) corner.
+                int side = horizontal ? tb.Height : tb.Width;
+                Rectangle vis = horizontal
+                    ? new Rectangle(tb.Left + margin, tb.Top, side, side)
+                    : new Rectangle(tb.Left, tb.Top + margin, side, side);
+
+                // What you can click: the same area stretched out to the screen edges, so a mouse pushed
+                // into the left edge, the bottom edge or the corner still hits the button.
+                int l = vis.Left, t = vis.Top, r = vis.Right, b = vis.Bottom;
+                if (horizontal)
+                {
+                    if (tb.Left <= screen.Left + slack) l = Math.Min(l, screen.Left);
+                    t = Math.Min(t, tb.Top <= screen.Top + slack ? screen.Top : tb.Top);
+                    b = Math.Max(b, tb.Bottom >= screen.Bottom - slack ? screen.Bottom : tb.Bottom);
+                }
+                else
+                {
+                    if (tb.Top <= screen.Top + slack) t = Math.Min(t, screen.Top);
+                    l = Math.Min(l, tb.Left <= screen.Left + slack ? screen.Left : tb.Left);
+                    r = Math.Max(r, tb.Right >= screen.Right - slack ? screen.Right : tb.Right);
+                }
+
+                Bounds = Rectangle.FromLTRB(l, t, r, b);
+                visual = new Rectangle(vis.Left - l, vis.Top - t, side, side);
                 if (!Visible) Show();
                 Render();
                 BringAboveTaskbar();
@@ -343,14 +369,14 @@ namespace AppLauncher
                         int alpha = pressed ? 12 : 24;
                         Color fill = light ? Color.FromArgb(alpha, 0, 0, 0) : Color.FromArgb(alpha, 255, 255, 255);
                         int inset = Px(HoverInsetPx);
-                        var area = new Rectangle(inset, inset, Width - 2 * inset, Height - 2 * inset);
+                        var area = new Rectangle(visual.Left + inset, visual.Top + inset, visual.Width - 2 * inset, visual.Height - 2 * inset);
                         using (GraphicsPath path = RoundedRect(area, Px(HoverRadiusPx)))
                         using (var brush = new SolidBrush(fill))
                             g.FillPath(brush, path);
                     }
 
                     int size = Px(pressed ? IconPx - 4 : IconPx);
-                    var target = new Rectangle((Width - size) / 2, (Height - size) / 2, size, size);
+                    var target = new Rectangle(visual.Left + (visual.Width - size) / 2, visual.Top + (visual.Height - size) / 2, size, size);
                     using (ImageAttributes attrs = iconIsMask ? ButtonIcons.Tint(light ? 0.15f : 1f) : null)
                         ButtonIcons.Draw(g, icon, target, attrs);
                 }
