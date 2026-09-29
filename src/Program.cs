@@ -1,5 +1,5 @@
 // AppLauncher - a button on the far left of the Windows taskbar that opens a
-// menu of your favourite apps (listed in apps.txt next to the exe).
+// list of your favourite apps.
 //
 // Written against .NET Framework 4.x / C# 5 so it builds with the csc.exe that
 // ships with every Windows install (see build.bat).
@@ -11,7 +11,7 @@ using Microsoft.Win32;
 
 [assembly: System.Reflection.AssemblyTitle("AppLauncher")]
 [assembly: System.Reflection.AssemblyProduct("AppLauncher")]
-[assembly: System.Reflection.AssemblyVersion("2.0.0.0")]
+[assembly: System.Reflection.AssemblyVersion("3.0.0.0")]
 
 namespace AppLauncher
 {
@@ -28,17 +28,17 @@ namespace AppLauncher
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
 
-                // First run: create an example apps.txt and start with Windows from now on.
-                bool firstRun = false;
-                try { firstRun = AppMenu.EnsureConfigExists(); }
-                catch (Exception ex) { AppMenu.ShowError("Could not create " + AppMenu.ConfigPath, ex); }
-                if (firstRun)
+                Settings settings = Settings.Load();
+
+                // First run: start with Windows from now on and write out the default settings.
+                if (settings.IsFirstRun)
                 {
                     try { Autostart.Set(true); }
                     catch { }
+                    settings.Save();
                 }
 
-                using (var button = new TaskbarButton())
+                using (var button = new TaskbarButton(settings))
                 {
                     button.Start();
                     Application.Run();

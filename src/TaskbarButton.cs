@@ -5,6 +5,8 @@
 // drawn with per-pixel transparency so it blends in. It keeps itself in place
 // when the taskbar moves or Explorer restarts, and hides while a fullscreen
 // app is running or the taskbar is auto-hidden.
+//
+// Left-click opens the app list (AppPopup); right-click opens the settings menu.
 
 using System;
 using System.Drawing;
@@ -23,20 +25,36 @@ namespace AppLauncher
         private const int HoverInsetPx = 4;
         private const int HoverRadiusPx = 4;
 
+        // id, menu label, tinted to match the taskbar (true) or drawn as-is (false)
+        private static readonly object[][] BuiltInIcons =
+        {
+            new object[] { "savy",    "Savy S",      false },
+            new object[] { "grid",    "Color tiles", false },
+            new object[] { "dots",    "Dots",        true  },
+            new object[] { "list",    "List",        true  },
+            new object[] { "sparkle", "Sparkle",     true  },
+        };
+
+        private readonly Settings settings;
         private readonly Timer timer;
-        private readonly Image icon;
         private readonly float scale;
         private readonly uint taskbarCreatedMessage;
         private readonly NativeMethods.WinEventDelegate foregroundHookProc; // kept alive for the native hook
         private IntPtr foregroundHook;
 
+        private Image icon;
+        private bool iconIsMask;
+        private AppPopup popup;
+
         private IntPtr taskbar;
         private Rectangle taskbarRect;
-        private bool hover, pressed, menuOpen;
+        private bool hover, pressed, menuOpen, suppressClick;
         private int lastMenuClosedAt = Environment.TickCount - 10000;
 
-        public TaskbarButton()
+        public TaskbarButton(Settings settings)
         {
+            this.settings = settings;
+
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
@@ -45,7 +63,7 @@ namespace AppLauncher
             using (Graphics g = CreateGraphics())
                 scale = g.DpiX / 96f;
 
-            icon = LoadButtonIcon();
+            LoadButtonIcon();
             taskbarCreatedMessage = NativeMethods.RegisterWindowMessage("TaskbarCreated");
 
             timer = new Timer { Interval = 300 };
@@ -94,7 +112,7 @@ namespace AppLauncher
             if (disposing)
             {
                 timer.Dispose();
-                icon.Dispose();
+                if (icon != null) icon.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -213,7 +231,7 @@ namespace AppLauncher
                    r.Right >= screen.Right && r.Bottom >= screen.Bottom;
         }
 
-        // ---- Mouse & menus --------------------------------------------------
+        // ---- Mouse ----------------------------------------------------------
 
         protected override void OnMouseEnter(EventArgs e)
         {
@@ -232,6 +250,10 @@ namespace AppLauncher
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
+            // Clicking the button while the list is open first closes the list (it loses focus);
+            // remember that so the same click doesn't immediately reopen it.
+            suppressClick = unchecked(Environment.TickCount - lastMenuClosedAt) < 400;
+
             if (e.Button == MouseButtons.Left)
             {
                 pressed = true;
@@ -246,82 +268,374 @@ namespace AppLauncher
             pressed = false;
             Render();
 
-            // A click on the button while its menu is open just closes the menu.
-            bool justClosed = unchecked(Environment.TickCount - lastMenuClosedAt) < 300;
-
-            if (e.Button == MouseButtons.Left && wasPressed && !justClosed)
-                ShowMenu(AppMenu.Build(scale));
-            else if (e.Button == MouseButtons.Right && !justClosed)
-                ShowMenu(BuildOptionsMenu());
+            if (!suppressClick)
+            {
+                if (e.Button == MouseButtons.Left && wasPressed)
+                    ShowPopup();
+                else if (e.Button == MouseButtons.Right)
+                    ShowSettingsMenu();
+            }
+            suppressClick = false;
 
             base.OnMouseUp(e);
         }
 
-        private ContextMenuStrip BuildOptionsMenu()
+        // ---- The app list ---------------------------------------------------
+
+        private void ShowPopup()
         {
-            ContextMenuStrip menu = AppMenu.NewMenu(scale);
+            if (popup != null) return;
 
-            var edit = new ToolStripMenuItem("Edit app list...");
-            edit.Click += delegate { AppMenu.EditConfig(); };
-            menu.Items.Add(edit);
-
-            var folder = new ToolStripMenuItem("Open AppLauncher folder");
-            folder.Click += delegate
+            popup = new AppPopup(settings, scale, taskbarRect, Bounds);
+            menuOpen = true;
+            popup.FormClosed += delegate
             {
-                System.Diagnostics.Process.Start("explorer.exe", "\"" + AppDomain.CurrentDomain.BaseDirectory + "\"");
+                popup.Dispose();
+                popup = null;
+                MenuClosed();
             };
-            menu.Items.Add(folder);
+            Render();
+            popup.Open();
+        }
+
+        private void MenuClosed()
+        {
+            menuOpen = false;
+            lastMenuClosedAt = Environment.TickCount;
+            hover = Bounds.Contains(Cursor.Position);
+            if (!IsDisposed && IsHandleCreated) Render();
+        }
+
+        // ---- The settings menu (right-click) -------------------------------
+
+        private ContextMenuStrip NewMenu()
+        {
+            int thumb = Px(20);
+            return new ContextMenuStrip { ImageScalingSize = new Size(thumb, thumb) };
+        }
+
+        private void ShowSettingsMenu()
+        {
+            if (popup != null) return;
+
+            ContextMenuStrip menu = NewMenu();
 
             var autostart = new ToolStripMenuItem("Start with Windows") { Checked = Autostart.IsEnabled };
             autostart.Click += delegate
             {
                 try { Autostart.Set(!Autostart.IsEnabled); }
-                catch (Exception ex) { AppMenu.ShowError("Could not change the startup setting.", ex); }
+                catch (Exception ex) { Shell.ShowError("Could not change the startup setting.", ex); }
             };
             menu.Items.Add(autostart);
+            menu.Items.Add(new ToolStripSeparator());
 
+            // Apps
+            var add = new ToolStripMenuItem("Add app...");
+            add.Click += delegate { Later(AddApps); };
+            menu.Items.Add(add);
+            menu.Items.Add(AppSubmenu("Rename app", delegate (AppItem a) { Later(delegate { RenameApp(a); }); }));
+            menu.Items.Add(AppSubmenu("Remove app", RemoveApp));
+            menu.Items.Add(new ToolStripSeparator());
+
+            // Look of the list
+            var color = new ToolStripMenuItem("Background color...");
+            color.Click += delegate { Later(PickBackColor); };
+            menu.Items.Add(color);
+
+            var transparency = new ToolStripMenuItem("Background transparency");
+            for (int p = 0; p <= 100; p += 10)
+            {
+                int percent = p;
+                string label = p == 0 ? "0% (solid)" : p == 100 ? "100% (no background)" : p + "%";
+                var item = new ToolStripMenuItem(label) { Checked = settings.TransparencyPercent == percent };
+                item.Click += delegate { settings.TransparencyPercent = percent; settings.Save(); };
+                transparency.DropDownItems.Add(item);
+            }
+            menu.Items.Add(transparency);
+
+            var sizes = new ToolStripMenuItem("Icon and menu size");
+            foreach (int s in Settings.IconSizes)
+            {
+                int size = s;
+                var item = new ToolStripMenuItem(size + " px") { Checked = settings.IconSize == size };
+                item.Click += delegate
+                {
+                    settings.IconSize = size;
+                    settings.Save();
+                    Shell.ClearIconCache();
+                };
+                sizes.DropDownItems.Add(item);
+            }
+            menu.Items.Add(sizes);
+            menu.Items.Add(new ToolStripSeparator());
+
+            // Taskbar button icon
+            var icons = new ToolStripMenuItem("Button icon");
+            foreach (object[] built in BuiltInIcons)
+            {
+                string id = (string)built[0];
+                var item = new ToolStripMenuItem((string)built[1])
+                {
+                    Checked = settings.ButtonIcon == id,
+                    Image = MenuThumbnail(id),
+                };
+                item.Click += delegate { SetButtonIcon(id); };
+                icons.DropDownItems.Add(item);
+            }
+            icons.DropDownItems.Add(new ToolStripSeparator());
+            if (File.Exists(Settings.CustomIconPath))
+            {
+                var mine = new ToolStripMenuItem("My own icon")
+                {
+                    Checked = settings.ButtonIcon == "custom",
+                    Image = MenuThumbnail("custom"),
+                };
+                mine.Click += delegate { SetButtonIcon("custom"); };
+                icons.DropDownItems.Add(mine);
+            }
+            var choose = new ToolStripMenuItem("Choose an image...");
+            choose.Click += delegate { Later(ChooseCustomIcon); };
+            icons.DropDownItems.Add(choose);
+            menu.Items.Add(icons);
             menu.Items.Add(new ToolStripSeparator());
 
             var exit = new ToolStripMenuItem("Exit AppLauncher");
             exit.Click += delegate { Application.Exit(); };
             menu.Items.Add(exit);
 
-            return menu;
-        }
-
-        private void ShowMenu(ContextMenuStrip menu)
-        {
             menuOpen = true;
             Render();
-
             menu.Closed += delegate
             {
-                menuOpen = false;
-                lastMenuClosedAt = Environment.TickCount;
-                hover = Bounds.Contains(Cursor.Position);
                 if (IsDisposed || !IsHandleCreated) return; // "Exit" was clicked
-                Render();
+                MenuClosed();
                 BeginInvoke((MethodInvoker)menu.Dispose);
             };
 
             // The menu only closes on outside clicks if our window is in the foreground.
             NativeMethods.SetForegroundWindow(Handle);
+            Point at = MenuAnchor();
+            menu.Show(at, taskbarRect.Width >= taskbarRect.Height && taskbarRect.Top > Screen.FromRectangle(taskbarRect).Bounds.Top
+                ? ToolStripDropDownDirection.AboveRight
+                : ToolStripDropDownDirection.BelowRight);
+        }
 
-            Rectangle b = Bounds;
+        private Point MenuAnchor()
+        {
             Rectangle screen = Screen.FromRectangle(taskbarRect).Bounds;
             if (taskbarRect.Width >= taskbarRect.Height)
+                return new Point(Bounds.Left, taskbarRect.Top > screen.Top ? taskbarRect.Top : taskbarRect.Bottom);
+            return new Point(taskbarRect.Left <= screen.Left ? taskbarRect.Right : taskbarRect.Left, Bounds.Top);
+        }
+
+        private ToolStripMenuItem AppSubmenu(string title, Action<AppItem> onPick)
+        {
+            var parent = new ToolStripMenuItem(title);
+            foreach (AppItem app in settings.SortedApps())
             {
-                if (taskbarRect.Top > screen.Top)   // bottom taskbar
-                    menu.Show(new Point(b.Left, taskbarRect.Top), ToolStripDropDownDirection.AboveRight);
-                else                                // top taskbar
-                    menu.Show(new Point(b.Left, taskbarRect.Bottom), ToolStripDropDownDirection.BelowRight);
+                AppItem picked = app;
+                var item = new ToolStripMenuItem(app.Name.Replace("&", "&&"));
+                item.Click += delegate { onPick(picked); };
+                parent.DropDownItems.Add(item);
+            }
+            if (parent.DropDownItems.Count == 0)
+                parent.DropDownItems.Add(new ToolStripMenuItem("(no apps yet)") { Enabled = false });
+            return parent;
+        }
+
+        // Runs after the menu has finished closing (dialogs opened from inside a click look wrong).
+        private void Later(MethodInvoker action)
+        {
+            BeginInvoke(action);
+        }
+
+        private void AddApps()
+        {
+            using (var dlg = new OpenFileDialog())
+            {
+                dlg.Title = "Choose the apps to add";
+                dlg.Filter = "Apps and shortcuts (*.exe;*.lnk)|*.exe;*.lnk|All files (*.*)|*.*";
+                dlg.Multiselect = true;
+                dlg.DereferenceLinks = false;
+                string startMenu = Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms);
+                if (Directory.Exists(startMenu)) dlg.InitialDirectory = startMenu;
+
+                NativeMethods.SetForegroundWindow(Handle);
+                if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+                foreach (string path in dlg.FileNames)
+                {
+                    if (settings.ContainsPath(path)) continue;
+                    settings.Apps.Add(new AppItem { Name = Shell.DefaultName(path), Path = path });
+                }
+                settings.Save();
+            }
+        }
+
+        private void RenameApp(AppItem app)
+        {
+            NativeMethods.SetForegroundWindow(Handle);
+            string name = Shell.Ask(this, "Rename app", "Name shown in the list:", app.Name);
+            if (name == null) return;
+            app.Name = name;
+            settings.Save();
+        }
+
+        private void RemoveApp(AppItem app)
+        {
+            settings.Apps.Remove(app);
+            settings.Save();
+        }
+
+        private void PickBackColor()
+        {
+            using (var dlg = new ColorDialog())
+            {
+                dlg.AnyColor = true;
+                dlg.FullOpen = true;
+                dlg.Color = settings.BackColor;
+                NativeMethods.SetForegroundWindow(Handle);
+                if (dlg.ShowDialog(this) != DialogResult.OK) return;
+                settings.BackColor = dlg.Color;
+                settings.Save();
+            }
+        }
+
+        // ---- Button icon ----------------------------------------------------
+
+        private void SetButtonIcon(string id)
+        {
+            settings.ButtonIcon = id;
+            settings.Save();
+            LoadButtonIcon();
+            Render();
+        }
+
+        private void ChooseCustomIcon()
+        {
+            using (var dlg = new OpenFileDialog())
+            {
+                dlg.Title = "Choose an icon for the taskbar button";
+                dlg.Filter = "Images (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.ico)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.ico";
+                NativeMethods.SetForegroundWindow(Handle);
+                if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+                try
+                {
+                    Bitmap square;
+                    if (Path.GetExtension(dlg.FileName).ToLowerInvariant() == ".ico")
+                    {
+                        using (var ico = new Icon(dlg.FileName, 256, 256))
+                            square = Shell.Fit(ico.ToBitmap(), 256);
+                    }
+                    else
+                    {
+                        using (Image img = Image.FromFile(dlg.FileName))
+                            square = Shell.Fit(new Bitmap(img), 256);
+                    }
+
+                    Directory.CreateDirectory(Settings.Folder);
+                    using (square)
+                    using (var clean = new Bitmap(square.Width, square.Height, PixelFormat.Format32bppArgb))
+                    {
+                        using (Graphics g = Graphics.FromImage(clean))
+                            g.DrawImage(square, 0, 0, square.Width, square.Height);
+                        clean.Save(Settings.CustomIconPath, ImageFormat.Png);
+                    }
+                    SetButtonIcon("custom");
+                }
+                catch (Exception ex)
+                {
+                    Shell.ShowError("Could not use that image.", ex);
+                }
+            }
+        }
+
+        // Loads the current button icon; falls back to the Savy S if something is wrong.
+        private void LoadButtonIcon()
+        {
+            Image loaded = null;
+            bool mask = false;
+            string id = settings.ButtonIcon;
+
+            if (id == "custom")
+            {
+                try
+                {
+                    using (var fs = File.OpenRead(Settings.CustomIconPath))
+                    using (Image img = Image.FromStream(fs))
+                        loaded = new Bitmap(img);
+                }
+                catch { loaded = null; }
             }
             else
             {
-                if (taskbarRect.Left <= screen.Left) // left taskbar
-                    menu.Show(new Point(taskbarRect.Right, b.Top), ToolStripDropDownDirection.BelowRight);
-                else                                 // right taskbar
-                    menu.Show(new Point(taskbarRect.Left, b.Top), ToolStripDropDownDirection.BelowLeft);
+                loaded = LoadBuiltIn(id, out mask);
+            }
+
+            if (loaded == null)
+            {
+                settings.ButtonIcon = "savy";
+                loaded = LoadBuiltIn("savy", out mask);
+            }
+
+            Image old = icon;
+            icon = loaded;
+            iconIsMask = mask;
+            if (old != null) old.Dispose();
+        }
+
+        private static Image LoadBuiltIn(string id, out bool mask)
+        {
+            mask = false;
+            foreach (object[] built in BuiltInIcons)
+            {
+                if ((string)built[0] != id) continue;
+                mask = (bool)built[2];
+                using (var s = typeof(TaskbarButton).Assembly.GetManifestResourceStream("icon-" + id + ".png"))
+                {
+                    if (s == null) return null;
+                    using (Image img = Image.FromStream(s))
+                        return new Bitmap(img);
+                }
+            }
+            return null;
+        }
+
+        // Small preview for the "Button icon" menu (the menu itself is always light).
+        private Image MenuThumbnail(string id)
+        {
+            int px = Px(20);
+            try
+            {
+                Image full;
+                bool mask = false;
+                if (id == "custom")
+                {
+                    using (var fs = File.OpenRead(Settings.CustomIconPath))
+                    using (Image img = Image.FromStream(fs))
+                        full = new Bitmap(img);
+                }
+                else
+                {
+                    full = LoadBuiltIn(id, out mask);
+                }
+                if (full == null) return null;
+
+                var thumb = new Bitmap(px, px, PixelFormat.Format32bppPArgb);
+                using (full)
+                using (Graphics g = Graphics.FromImage(thumb))
+                {
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                    using (ImageAttributes attrs = mask ? Tint(0.15f) : null)
+                        DrawIcon(g, full, new Rectangle(0, 0, px, px), attrs);
+                }
+                return thumb;
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -336,7 +650,7 @@ namespace AppLauncher
         {
             if (!IsHandleCreated || Width <= 0 || Height <= 0) return;
 
-            using (var bmp = new Bitmap(Width, Height, PixelFormat.Format32bppArgb))
+            using (var bmp = new Bitmap(Width, Height, PixelFormat.Format32bppPArgb))
             {
                 using (Graphics g = Graphics.FromImage(bmp))
                 {
@@ -346,9 +660,10 @@ namespace AppLauncher
                     g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                     g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
+                    bool light = IsLightTaskbar();
+
                     if (hover || menuOpen)
                     {
-                        bool light = IsLightTaskbar();
                         int alpha = pressed ? 12 : 24;
                         Color fill = light ? Color.FromArgb(alpha, 0, 0, 0) : Color.FromArgb(alpha, 255, 255, 255);
                         int inset = Px(HoverInsetPx);
@@ -359,39 +674,36 @@ namespace AppLauncher
                     }
 
                     int size = Px(pressed ? IconPx - 4 : IconPx);
-                    g.DrawImage(icon, new Rectangle((Width - size) / 2, (Height - size) / 2, size, size));
+                    var target = new Rectangle((Width - size) / 2, (Height - size) / 2, size, size);
+                    using (ImageAttributes attrs = iconIsMask ? Tint(light ? 0.15f : 1f) : null)
+                        DrawIcon(g, icon, target, attrs);
                 }
-                Present(bmp);
+                Layered.Present(Handle, bmp, Location);
             }
         }
 
-        private void Present(Bitmap bmp)
+        private static void DrawIcon(Graphics g, Image image, Rectangle target, ImageAttributes attrs)
         {
-            IntPtr screenDc = NativeMethods.GetDC(IntPtr.Zero);
-            IntPtr memDc = NativeMethods.CreateCompatibleDC(screenDc);
-            IntPtr hBitmap = bmp.GetHbitmap(Color.FromArgb(0));
-            IntPtr oldBitmap = NativeMethods.SelectObject(memDc, hBitmap);
-            try
+            if (attrs == null)
+                g.DrawImage(image, target);
+            else
+                g.DrawImage(image, target, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, attrs);
+        }
+
+        // Recolours a white-on-transparent mask: t = 1 keeps it white, small t makes it dark.
+        private static ImageAttributes Tint(float t)
+        {
+            var matrix = new ColorMatrix(new float[][]
             {
-                var size = new NativeMethods.SIZE { Width = bmp.Width, Height = bmp.Height };
-                var source = new NativeMethods.POINT();
-                var dest = new NativeMethods.POINT { X = Left, Y = Top };
-                var blend = new NativeMethods.BLENDFUNCTION
-                {
-                    BlendOp = NativeMethods.AC_SRC_OVER,
-                    SourceConstantAlpha = 255,
-                    AlphaFormat = NativeMethods.AC_SRC_ALPHA,
-                };
-                NativeMethods.UpdateLayeredWindow(Handle, screenDc, ref dest, ref size, memDc, ref source,
-                    0, ref blend, NativeMethods.ULW_ALPHA);
-            }
-            finally
-            {
-                NativeMethods.SelectObject(memDc, oldBitmap);
-                NativeMethods.DeleteObject(hBitmap);
-                NativeMethods.DeleteDC(memDc);
-                NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
-            }
+                new float[] { t, 0, 0, 0, 0 },
+                new float[] { 0, t, 0, 0, 0 },
+                new float[] { 0, 0, t, 0, 0 },
+                new float[] { 0, 0, 0, 1, 0 },
+                new float[] { 0, 0, 0, 0, 1 },
+            });
+            var attrs = new ImageAttributes();
+            attrs.SetColorMatrix(matrix);
+            return attrs;
         }
 
         private static GraphicsPath RoundedRect(Rectangle r, int radius)
@@ -419,30 +731,6 @@ namespace AppLauncher
             {
                 return false;
             }
-        }
-
-        // Uses icon.png or icon.ico next to the exe if present, otherwise the built-in icon.
-        private static Image LoadButtonIcon()
-        {
-            string dir = AppDomain.CurrentDomain.BaseDirectory;
-            try
-            {
-                string png = Path.Combine(dir, "icon.png");
-                if (File.Exists(png))
-                    using (var fs = File.OpenRead(png))
-                    using (Image img = Image.FromStream(fs))
-                        return new Bitmap(img);
-
-                string ico = Path.Combine(dir, "icon.ico");
-                if (File.Exists(ico))
-                    using (var i = new Icon(ico, 256, 256))
-                        return i.ToBitmap();
-            }
-            catch { }
-
-            using (Stream s = typeof(TaskbarButton).Assembly.GetManifestResourceStream("launcher.png"))
-            using (Image img = Image.FromStream(s))
-                return new Bitmap(img);
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -109,11 +110,86 @@ namespace AppLauncher
         public static extern bool UpdateLayeredWindow(IntPtr hwnd, IntPtr hdcDst, ref POINT pptDst, ref SIZE psize,
             IntPtr hdcSrc, ref POINT pptSrc, int crKey, ref BLENDFUNCTION pblend, int dwFlags);
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct BITMAPINFOHEADER
+        {
+            public uint biSize;
+            public int biWidth, biHeight;
+            public ushort biPlanes, biBitCount;
+            public uint biCompression, biSizeImage;
+            public int biXPelsPerMeter, biYPelsPerMeter;
+            public uint biClrUsed, biClrImportant;
+        }
+
+        [DllImport("gdi32.dll")]
+        public static extern IntPtr CreateDIBSection(IntPtr hdc, ref BITMAPINFOHEADER pbmi, uint iUsage,
+            out IntPtr ppvBits, IntPtr hSection, uint dwOffset);
+
+        [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory")]
+        public static extern void CopyMemory(IntPtr dest, IntPtr src, UIntPtr count);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern uint PrivateExtractIcons(string szFileName, int nIconIndex, int cxIcon, int cyIcon,
+            IntPtr[] phicon, uint[] piconid, uint nIcons, uint flags);
+
+        [DllImport("user32.dll")]
+        public static extern bool DestroyIcon(IntPtr hIcon);
+
         public static string GetClassName(IntPtr hWnd)
         {
             var sb = new StringBuilder(256);
             GetClassName(hWnd, sb, sb.Capacity);
             return sb.ToString();
+        }
+    }
+    /// <summary>Puts a 32-bit premultiplied-alpha bitmap on a WS_EX_LAYERED window.</summary>
+    internal static class Layered
+    {
+        public static void Present(IntPtr hwnd, Bitmap bmp, Point location)
+        {
+            int w = bmp.Width, h = bmp.Height;
+            IntPtr screenDc = NativeMethods.GetDC(IntPtr.Zero);
+            IntPtr memDc = NativeMethods.CreateCompatibleDC(screenDc);
+
+            var header = new NativeMethods.BITMAPINFOHEADER
+            {
+                biSize = (uint)Marshal.SizeOf(typeof(NativeMethods.BITMAPINFOHEADER)),
+                biWidth = w,
+                biHeight = -h, // top-down
+                biPlanes = 1,
+                biBitCount = 32,
+            };
+            IntPtr bits;
+            IntPtr dib = NativeMethods.CreateDIBSection(memDc, ref header, 0, out bits, IntPtr.Zero, 0);
+            IntPtr oldBitmap = IntPtr.Zero;
+            try
+            {
+                if (dib == IntPtr.Zero) return;
+
+                BitmapData data = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppPArgb);
+                try { NativeMethods.CopyMemory(bits, data.Scan0, (UIntPtr)(uint)(w * h * 4)); }
+                finally { bmp.UnlockBits(data); }
+
+                oldBitmap = NativeMethods.SelectObject(memDc, dib);
+                var size = new NativeMethods.SIZE { Width = w, Height = h };
+                var source = new NativeMethods.POINT();
+                var dest = new NativeMethods.POINT { X = location.X, Y = location.Y };
+                var blend = new NativeMethods.BLENDFUNCTION
+                {
+                    BlendOp = NativeMethods.AC_SRC_OVER,
+                    SourceConstantAlpha = 255,
+                    AlphaFormat = NativeMethods.AC_SRC_ALPHA,
+                };
+                NativeMethods.UpdateLayeredWindow(hwnd, screenDc, ref dest, ref size, memDc, ref source,
+                    0, ref blend, NativeMethods.ULW_ALPHA);
+            }
+            finally
+            {
+                if (oldBitmap != IntPtr.Zero) NativeMethods.SelectObject(memDc, oldBitmap);
+                if (dib != IntPtr.Zero) NativeMethods.DeleteObject(dib);
+                NativeMethods.DeleteDC(memDc);
+                NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
+            }
         }
     }
 }

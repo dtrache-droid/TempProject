@@ -17,7 +17,11 @@ if not exist bin mkdir bin
     /out:bin\AppLauncher.exe ^
     /win32icon:src\launcher.ico ^
     /win32manifest:src\app.manifest ^
-    /resource:src\launcher.png,launcher.png ^
+    /resource:src\icon-savy.png,icon-savy.png ^
+    /resource:src\icon-grid.png,icon-grid.png ^
+    /resource:src\icon-dots.png,icon-dots.png ^
+    /resource:src\icon-list.png,icon-list.png ^
+    /resource:src\icon-sparkle.png,icon-sparkle.png ^
     /reference:System.Windows.Forms.dll /reference:System.Drawing.dll ^
     src\*.cs
 if errorlevel 1 (
