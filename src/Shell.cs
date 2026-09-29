@@ -184,37 +184,5 @@ namespace AppLauncher
                 if (shell != null && Marshal.IsComObject(shell)) Marshal.ReleaseComObject(shell);
             }
         }
-
-        // ---- A tiny "type a name" dialog -------------------------------------
-
-        public static string Ask(IWin32Window owner, string title, string label, string initial)
-        {
-            using (var form = new Form())
-            {
-                form.AutoScaleDimensions = new SizeF(96f, 96f);
-                form.AutoScaleMode = AutoScaleMode.Dpi;
-                form.Text = title;
-                form.FormBorderStyle = FormBorderStyle.FixedDialog;
-                form.StartPosition = FormStartPosition.CenterScreen;
-                form.MinimizeBox = false;
-                form.MaximizeBox = false;
-                form.ShowInTaskbar = false;
-                form.TopMost = true;
-                form.ClientSize = new Size(360, 110);
-
-                var text = new Label { Text = label, Left = 12, Top = 12, Width = 336, AutoSize = false, Height = 20 };
-                var box = new TextBox { Text = initial, Left = 12, Top = 36, Width = 336 };
-                var ok = new Button { Text = "OK", Left = 192, Top = 72, Width = 75, DialogResult = DialogResult.OK };
-                var cancel = new Button { Text = "Cancel", Left = 273, Top = 72, Width = 75, DialogResult = DialogResult.Cancel };
-                form.Controls.AddRange(new Control[] { text, box, ok, cancel });
-                form.AcceptButton = ok;
-                form.CancelButton = cancel;
-                form.Shown += delegate { box.SelectAll(); box.Focus(); };
-
-                if (form.ShowDialog(owner) != DialogResult.OK) return null;
-                string result = box.Text.Trim();
-                return result.Length == 0 ? null : result;
-            }
-        }
     }
 }

@@ -3,7 +3,7 @@
 A button that sits in the empty **far-left corner of the Windows 11 taskbar**, even while your taskbar icons stay centered. Click it to open a list of **your own apps**: icon on the left, name on the right, sorted A-Z.
 
 - **Left-click** the button: your app list.
-- **Right-click** the button: settings.
+- **Right-click** the button: the settings window.
 - Starts with Windows. The button keeps its place if Explorer restarts or the screen changes, and hides while a fullscreen app or game is running.
 
 ## Install
@@ -20,25 +20,29 @@ A button that sits in the empty **far-left corner of the Windows 11 taskbar**, e
 
 ## Settings (right-click the button)
 
-| Menu item | What it does |
-| --- | --- |
-| **Start with Windows** | Tick or untick. |
-| **Add app...** | Pick one or more programs (`.exe`) or shortcuts (`.lnk`). Only what you add shows up in the list. |
-| **Rename app** | Change the name shown in the list. |
-| **Remove app** | Take an app out of the list. |
-| **Background color...** | Any color for the list background. |
-| **Background transparency** | 0% (solid) to 100% (no background at all: only icons and names are drawn). |
-| **Icon and menu size** | 16 to 64 px. The row height and text size scale with it. |
-| **Button icon** | Savy S (default), Color tiles, Dots, List, Sparkle, or **Choose an image...** to use your own (png, jpg, bmp, gif or ico). |
-| **Exit AppLauncher** | Closes the button (it comes back at the next login, or run the exe again). |
+Right-clicking the button opens the settings window. Every change is saved and applied straight away.
 
-The list is always sorted alphabetically, and changes apply the next time you open it.
+**Your apps**
+- **Add from Start menu...** shows every program in your Start menu with its icon. Tick the ones you want and click **Add**. This is the easiest way.
+- **Browse for a file...** picks any `.exe` or `.lnk` from disk.
+- **Drag and drop:** drag an app or shortcut from the desktop or a folder onto the window.
+- **Rename** (or press F2) and **Remove** (or press Delete) work on the selected apps. The list is always sorted A-Z.
 
-**Tip:** the easiest way to find an app to add is the Start-menu folder. The **Add app...** dialog opens there, and its shortcuts have the right icons.
+**Look of the list**
+- Pick a background color from the swatches, or the rainbow one for any color.
+- **Transparency** goes from solid to *no background* (only icons and names are drawn).
+- **Icon and text size** goes from 16 to 64 px.
+- A live preview on the right shows the result on a mock taskbar.
+
+**Button icon**
+- Savy S (default), Color tiles, Dots, List, Sparkle, or **Choose an image...** for your own (png, jpg, bmp, gif or ico).
+
+**General**
+- **Start with Windows** switch, a shortcut to the settings folder, and **Exit**.
 
 **Not supported:** Microsoft Store apps can't be picked from a file dialog, so they can't be added unless you have a `.lnk` shortcut for them.
 
-Your settings live in `%APPDATA%\AppLauncher\settings.ini`. To uninstall, untick **Start with Windows**, click **Exit AppLauncher**, then delete the exe and that folder.
+Your settings live in `%APPDATA%\AppLauncher\settings.ini`. To uninstall, switch off **Start with Windows**, click **Exit**, then delete the exe and that folder.
 
 ## How it works
 
@@ -52,10 +56,10 @@ The app list is a second window drawn with per-pixel transparency, which is how 
 | File | Purpose |
 | --- | --- |
 | `src/Program.cs` | Startup, single instance, *Start with Windows* |
-| `src/TaskbarButton.cs` | The taskbar button and the right-click settings menu |
-| `src/AppPopup.cs` | The app list window |
-| `src/Settings.cs` | Loading and saving the settings |
-| `src/Shell.cs` | Launching apps, extracting their icons, the rename dialog |
-| `src/NativeMethods.cs` | Windows API declarations |
+| `src/TaskbarButton.cs` | The taskbar button |
+| `src/AppPopup.cs`, `src/PopupPainter.cs` | The app list window and how it is laid out and drawn |
+| `src/SettingsForm.cs`, `src/StartMenuPicker.cs`, `src/UiKit.cs` | The settings window, the Start menu picker and the custom controls |
+| `src/Settings.cs`, `src/ButtonIcons.cs` | Loading and saving settings; the button icon choices |
+| `src/Shell.cs`, `src/NativeMethods.cs` | Launching apps and extracting icons; Windows API declarations |
 | `src/icon-*.png`, `src/launcher.ico` | Button icons and the exe icon (regenerate with `python3 tools/make_icons.py`) |
 | `build.bat` | Builds `bin\AppLauncher.exe` |

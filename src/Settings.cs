@@ -23,8 +23,6 @@ namespace AppLauncher
         public static readonly string FilePath = System.IO.Path.Combine(Folder, "settings.ini");
         public static readonly string CustomIconPath = System.IO.Path.Combine(Folder, "custom-icon.png");
 
-        public static readonly int[] IconSizes = { 16, 20, 24, 28, 32, 40, 48, 64 };
-
         public readonly List<AppItem> Apps = new List<AppItem>();
         public Color BackColor = Color.FromArgb(32, 32, 32);
         public int TransparencyPercent = 10;   // 0 = solid, 100 = no background

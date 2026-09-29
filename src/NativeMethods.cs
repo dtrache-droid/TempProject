@@ -122,6 +122,9 @@ namespace AppLauncher
         [DllImport("user32.dll")]
         public static extern bool DestroyIcon(IntPtr hIcon);
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string lParam);
+
         public static string GetClassName(IntPtr hWnd)
         {
             var sb = new StringBuilder(256);
