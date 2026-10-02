@@ -10,7 +10,7 @@
 <title>The Last Letter West</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;background:#120d09;color:#f0e4cc;font-family:Georgia,'Times New Roman',serif;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+html,body{overscroll-behavior:none;margin:0;height:100%;background:#120d09;color:#f0e4cc;font-family:Georgia,'Times New Roman',serif;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 #app{max-width:560px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;background:#1b1410}
 #cv{width:100%;aspect-ratio:16/9;image-rendering:pixelated;display:block;background:#000;flex:none;touch-action:none}
 #hud{flex:none;padding:6px 8px 2px;font:600 12px/1.2 system-ui,sans-serif}
@@ -21,18 +21,37 @@ html,body{margin:0;height:100%;background:#120d09;color:#f0e4cc;font-family:Geor
 .mem.dead{opacity:.4;text-decoration:line-through}
 .bar{height:5px;background:#120d09;border-radius:3px;margin-top:2px;overflow:hidden}
 .bar i{display:block;height:100%}
-#panel{flex:1;overflow:auto;padding:6px 10px 18px;-webkit-overflow-scrolling:touch}
+#side{flex:1;min-height:0;display:flex;flex-direction:column}
+#panel{position:relative}
+.ev{position:absolute;left:10px;right:10px;top:6px;bottom:10px;display:flex;flex-direction:column;min-height:0}
+.evt{flex:1 1 auto;min-height:56px;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.evc{flex:0 0 auto;max-height:88%;overflow:auto;padding-top:2px;overscroll-behavior:contain}
+#panel{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:6px 10px 18px;-webkit-overflow-scrolling:touch}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+h2,.story,.tags,.big{animation:fi .25s ease-out}
+.hint{font:12px/1.35 system-ui,sans-serif;color:#9d8a66;margin:2px 2px 4px}
+.chip.warn{border-color:#d9534f;color:#ffab9c}
+button.link{background:none;border:0;color:#9d8a66;font:600 12px system-ui,sans-serif;min-height:36px;padding:6px;margin-top:6px;text-decoration:underline}
+#hud.compact .r2,#hud.compact .party,#hud.res .party,#hud.res .r1{display:none}
+.evt.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 26px),transparent);mask-image:linear-gradient(#000 calc(100% - 26px),transparent)}
+.big.sm{min-height:38px;padding:7px 12px;margin:3px 0}
+.route{position:relative;height:22px;margin:2px 4px 6px}
+.route:before{content:'';position:absolute;left:0;right:0;top:10px;height:3px;border-radius:2px;background:#3a2c1f}
+.route i{position:absolute;top:6px;width:11px;height:11px;margin-left:-5px;border-radius:50%;background:#3a2c1f;border:2px solid #6b4a2e}
+.route i.v{background:#c88a3a;border-color:#f0b860}
+.route b{position:absolute;top:-2px;width:0;height:0;margin-left:-6px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid #ffd27a;filter:drop-shadow(0 1px 0 #000)}
+@media (orientation:landscape) and (max-height:560px){#app{max-width:none;flex-direction:row}#cv{width:min(58vw,calc(100vh * 16 / 9));height:auto;align-self:flex-start;flex:none}#side{height:100vh;height:100dvh;min-width:0}}
 button{font:600 14px system-ui,sans-serif;color:#f6ead2;background:linear-gradient(#6b4a2e,#4a3220);border:1px solid #8a6540;border-radius:10px;padding:10px 8px;min-height:44px;cursor:pointer}
 button:active{transform:translateY(1px);filter:brightness(1.2)}
 button.on{background:linear-gradient(#c88a3a,#92601f);border-color:#f0b860;color:#fff}
 button:disabled{opacity:.4}
-.big{width:100%;margin:5px 0;text-align:left;padding:12px;line-height:1.3;font-weight:600}
+.big{width:100%;margin:4px 0;text-align:left;padding:10px 12px;min-height:42px;line-height:1.3;font-weight:600}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:4px 0}
 .lbl{font:700 11px system-ui,sans-serif;color:#c9b38a;text-transform:uppercase;letter-spacing:.08em;margin-top:8px}
 h1{font:700 26px/1.1 'Courier New',monospace;color:#f2c571;letter-spacing:.04em;margin:4px 0 8px;text-shadow:2px 2px 0 #5a3414}
 h2{margin:4px 0 6px;font:700 17px 'Courier New',monospace;color:#f2c571;letter-spacing:.02em}
-.story{white-space:pre-wrap;font-size:15.5px;line-height:1.5;min-height:56px}
+.story{white-space:pre-wrap;font-size:15px;line-height:1.45;min-height:56px}
 .story.letter{font-style:italic;background:#e9dcbc;color:#3a2a18;padding:12px;border-radius:6px;border:1px solid #b79c6a}
 .tags{margin:10px 0 4px;display:flex;flex-wrap:wrap;gap:6px;font:700 12px system-ui,sans-serif}
 .tags b{background:#2c2118;border:1px solid #4a3a2a;border-radius:8px;padding:3px 8px}
@@ -52,8 +71,7 @@ input{width:100%;font:600 18px Georgia,serif;padding:10px;border-radius:10px;bor
 <body>
 <div id="app">
   <canvas id="cv" width="320" height="180"></canvas>
-  <div id="hud"></div>
-  <div id="panel"></div>
+  <div id="side"><div id="hud"></div><div id="panel"></div></div>
 </div>
 <noscript>This game needs JavaScript.</noscript>
 <script>
@@ -108,13 +126,14 @@ function blank(){return{name:'Ada',day:0,miles:0,food:450,money:250,parts:1,ammo
  party:[{n:'Ada',role:'you',hp:100},{n:'Mara',role:'Elias’s wife',hp:100},{n:'Tobias',role:'Elias’s son',hp:100},{n:'Hollis',role:'teamster',hp:100}]}}
 let G=blank(),mode='title',Q=[],cur=null,paused=false;
 let tod=.3,todT=null,camp=false,tsec=0,speedNow=0,dayAcc=0,weather='clear',snowCover=0,flash=0;
-let dust=[],sparks=[],birds=[],floats=[],hunt=null,typing=null,lastT=0;
+let dust=[],sparks=[],birds=[],floats=[],pings=[],hunt=null,typing=null,lastT=0;
 const clouds=Array.from({length:7},(_,i)=>({x:hash(i)*W,y:6+hash(i+7)*40,s:.6+hash(i+3)*.9,v:2+hash(i+5)*4}));
 const wp=Array.from({length:90},()=>({x:Math.random()*W,y:Math.random()*H,v:Math.random()}));
 const alive=()=>G.party.filter(p=>!p.dead&&!p.left);
 const member=n=>G.party.find(p=>p.n===n&&!p.left);
 const dayMiles=()=>[0,10,15,20][G.pace];
-function dateStr(){const d=new Date(1848,3,20+G.day);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+', 1848'}
+function dateStr(short){const d=new Date(1848,3,20+G.day);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+(short?'':', 1848')}
+function buzz(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 function jr(t){G.journal.push({d:dateStr(),t:t})}
 function msg(t){G.log.push(t);if(G.log.length>5)G.log.shift();showMsg()}
 function showMsg(){const m=$('msg');if(m)m.innerHTML=G.log.slice().reverse().map(x=>'<div>'+x+'</div>').join('')}
@@ -204,13 +223,13 @@ function wagon(wx){
   const a=wx/7;wheel(x+9,y-7,7,a);wheel(x+29,y-7,7,a);
 }
 function campfire(light){
-  const c=ctx,fx=150,fy=152;
+  const c=ctx,fx=180,fy=152;
   c.save();c.globalCompositeOperation='lighter';const g=c.createRadialGradient(fx,fy-6,2,fx,fy-6,78);g.addColorStop(0,'rgba(255,160,60,.55)');g.addColorStop(1,'rgba(255,120,30,0)');c.fillStyle=g;c.fillRect(fx-80,fy-86,160,110);c.restore();
   c.fillStyle='#3a2615';c.fillRect(fx-9,fy-3,18,3);c.fillStyle='#2a1a0c';c.fillRect(fx-7,fy-5,14,2);
   for(let i=0;i<7;i++){const f=Math.sin(tsec*10+i*1.7),h=10+f*4+(i===3?6:0),w=3-Math.abs(i-3)*.3,x=fx-8+i*2.7;
     c.fillStyle='#ff7a18';c.fillRect(x,fy-5-h,w,h);c.fillStyle='#ffb52e';c.fillRect(x+.4,fy-5-h*.7,w-.8,h*.7);c.fillStyle='#fff2a0';c.fillRect(x+.8,fy-5-h*.35,w-1.6,h*.35)}
   if(Math.random()<.35)sparks.push({x:fx+rnd(-5,5),y:fy-14,vx:rnd(-8,8),vy:-rnd(18,38),l:rnd(.6,1.3)});
-  const sit=[[118,'#3a2a22'],[132,'#2c2430'],[170,'#2e2a22'],[184,'#32262c']];
+  const sit=[[148,'#3a2a22'],[162,'#2c2430'],[198,'#2e2a22'],[212,'#32262c']];
   const mem=alive().filter(p=>p.n!=='Hollis');
   sit.forEach((s,i)=>{if(i>=mem.length)return;const px=s[0];c.fillStyle=s[1];c.fillRect(px-3,fy-9,6,9);c.fillStyle='#cfa07a';c.fillRect(px-2,fy-14,4,4);c.fillStyle='rgba(255,170,70,.55)';c.fillRect(px+(px<fx?2:-3),fy-9,1,9)});
 }
@@ -247,7 +266,7 @@ function draw(){
   c.fillStyle=rgb(mix(b.r,[0,0,0],.28));for(let x=-(wx%20);x<W;x+=20){c.fillRect(x,139,11,1);c.fillRect(x+7,147,11,1)}
   c.fillStyle=rgb(mix(b.r,[0,0,0],.2));for(let i=0;i<14;i++){const px=((hash(i)*400-wx)%400+400)%400;if(px<W)c.fillRect(px,132+hash(i+5)*18,2,1)}
   if(mode!=='title'&&mode!=='hunt'){for(let i=0;i<LM.length;i++){if(LM[i].type!=='river')continue;const x=170+(LM[i].m-G.miles)*PXM;if(x>-40&&x<W+40)riverDraw(x)}}
-  if(mode!=='hunt'){wagon(wx);dust.forEach(p=>{c.fillStyle='rgba('+(b.r[0]|0)+','+(b.r[1]|0)+','+(b.r[2]|0)+','+(p.l/p.m*.55)+')';c.fillRect(p.x,p.y,p.s,p.s)})}
+  if(mode!=='hunt'){wagon(wx);dust.forEach(p=>{c.fillStyle=p.wet?'rgba(200,230,255,'+(p.l/p.m*.8)+')':'rgba('+(b.r[0]|0)+','+(b.r[1]|0)+','+(b.r[2]|0)+','+(p.l/p.m*.55)+')';c.fillRect(p.x,p.y,p.s,p.s)})}
   if(hunt){hunt.animals.forEach(drawAnimal)}
   props(b,172,1.6,.95,90,.5,7,wx,true);
   if(b.name==='Blue Mountains'){const fg=c.createLinearGradient(0,HZ-30,0,HZ+30);fg.addColorStop(0,'rgba(220,230,235,0)');fg.addColorStop(.5,'rgba(220,230,235,'+(.28+Math.sin(tsec*.4)*.06)+')');fg.addColorStop(1,'rgba(220,230,235,0)');c.fillStyle=fg;c.fillRect(0,HZ-30,W,60)}
@@ -257,6 +276,7 @@ function draw(){
   if(camp){campfire(light)}
   sparks.forEach(p=>{c.fillStyle='rgba(255,'+((180+p.l*50)|0)+',80,'+Math.min(1,p.l)+')';c.fillRect(p.x,p.y,1,1)});
   floats.forEach(f=>{c.fillStyle='rgba(255,240,170,'+Math.min(1,f.l*2)+')';c.font='bold 9px monospace';c.fillText(f.t,f.x,f.y)});
+  pings.forEach(p=>{c.strokeStyle='rgba(255,230,160,'+(p.l/.3)+')';c.lineWidth=1;c.beginPath();c.arc(p.x,p.y,3+(0.3-p.l)*40,0,6.2832);c.stroke()});
   if(flash>0){c.fillStyle='rgba(255,255,255,'+(flash*2.4)+')';c.fillRect(0,0,W,H)}
   if(hunt&&hunt.recoil>0){c.fillStyle='rgba(255,255,255,'+hunt.recoil+')';c.fillRect(0,0,W,H)}
 }
@@ -266,11 +286,11 @@ function draw(){
    ===================================================================== */
 function update(dt){
   tsec+=dt;
-  if(todT!==null){const d=((todT-tod+1.5)%1)-.5;tod=(tod+Math.sign(d)*Math.min(Math.abs(d),dt*.15)+1)%1}
+  if(todT!==null){const d=((todT-tod+1.5)%1)-.5;if(Math.abs(d)<.004){if(!camp)todT=null}else tod=(tod+Math.sign(d)*Math.min(Math.abs(d),dt*.15)+1)%1}
   else tod=(tod+dt/110)%1;
   let target=0;
   if(mode==='title')target=2.6;
-  else if(mode==='travel'&&!paused){target=dayMiles()/2.8;const nx=LM[G.lm+1];if(nx)target=Math.min(target,Math.max(.8,(nx.m-G.miles)*3))}
+  else if(mode==='travel'&&!paused){target=dayMiles()/2.8;const nx=LM[G.lm+1];if(nx)target=Math.min(target,Math.max(.8,(stopAt(nx)-G.miles)*3))}
   speedNow=lerp(speedNow,target,1-Math.exp(-dt*4));if(speedNow<.02&&target===0)speedNow=0;
   const prev=G.miles;
   if(mode!=='hunt'&&speedNow>0)G.miles+=speedNow*dt;
@@ -279,12 +299,13 @@ function update(dt){
     dayAcc+=G.miles-prev;
     while(dayAcc>=dayMiles()&&mode==='travel'){dayAcc-=dayMiles();dayTick(false);if(Q.length&&mode==='travel'){nextEvent()}}
     const nx=LM[G.lm+1];
-    if(nx&&G.miles>=nx.m&&mode==='travel'){G.miles=nx.m;speedNow=0;arrive()}
+    if(nx&&G.miles>=stopAt(nx)&&mode==='travel'){G.miles=stopAt(nx);speedNow=0;arrive()}
   }
-  if(speedNow>.4&&mode!=='hunt'&&Math.random()<dt*40*speedNow/5){const b=biome(G.miles);dust.push({x:36+rnd(0,12),y:149+rnd(-1,1),vx:-rnd(10,30)*speedNow/5,vy:-rnd(6,16),l:.7,m:.7,s:rnd(1.5,3)})}
+  if(speedNow>.4&&mode!=='hunt'&&Math.random()<dt*40*speedNow/5){const wet=LM.some(l=>l.type==='river'&&Math.abs(170+(l.m-G.miles)*PXM-40)<36);dust.push({x:36+rnd(0,12),y:149+rnd(-1,1),vx:-rnd(10,30)*speedNow/5,vy:-rnd(6,16)*(wet?2.2:1),l:.7,m:.7,s:rnd(1.5,3),wet:wet})}
   dust=dust.filter(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.l-=dt;return p.l>0});
   sparks=sparks.filter(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=10*dt;p.l-=dt;return p.l>0});
   floats=floats.filter(f=>{f.y-=14*dt;f.l-=dt;return f.l>0});
+  pings=pings.filter(p=>{p.l-=dt;return p.l>0});
   clouds.forEach(cl=>{cl.x-=cl.v*dt*(1+speedNow*.05);if(cl.x<-40)cl.x=W+10});
   wp.forEach(p=>{if(weather==='rain'){p.y+=(150+p.v*80)*dt;p.x-=20*dt}else{p.y+=(18+p.v*22)*dt;p.x+=Math.sin(tsec+p.v*9)*10*dt-speedNow*4*dt}if(p.y>H){p.y=-4;p.x=Math.random()*W}if(p.x<0)p.x=W;if(p.x>W)p.x=0});
   const light=clamp(Math.sin((tod-.25)*6.2832)*1.4+.5,0,1);
@@ -294,41 +315,49 @@ function update(dt){
   if(weather==='rain'&&Math.random()<dt*.25)flash=.25;if(flash>0)flash=Math.max(0,flash-dt);
   if(mode==='hunt')updateHunt(dt);
 }
+function stopAt(l){return l.type==='river'?l.m-3.5:l.m}
 function pickWeather(){
   const b=biome(G.miles),prev=weather;
   if(prev!=='clear'&&Math.random()<.5)return;
   if(b.snow)weather=Math.random()<.45?'snow':'clear';
   else weather=Math.random()<.17?'rain':'clear';
 }
-function dayTick(quiet){
+function dayTick(quiet,still){
   G.day++;
   const al=alive(),need=al.length*[0,1,2,3][G.ration];let starving=false;
   if(G.food>=need)G.food-=need;else{G.food=0;starving=true;msg('Out of food. Everyone is going hungry.')}
+  if(!starving&&G.food<need*4&&!G.f.lowWarn){G.f.lowWarn=1;msg('Food is running low. Hunt, buy more, or ease the rations.')}
+  if(G.food>need*8)G.f.lowWarn=0;
   al.forEach(p=>{
-    let d=[0,1,0,-2][G.pace]+[0,-2,0,1][G.ration];
+    let d=(still?0:[0,.5,0,-1.5][G.pace])+[0,-1,0,1][G.ration];
     if(starving)d-=9;
-    if(weather==='snow'&&biome(G.miles).snow)d-=1.5;if(weather==='rain')d-=.5;
+    if(weather==='snow'&&biome(G.miles).snow&&!still)d-=1.5;if(weather==='rain'&&!still)d-=.5;
     if(G.morale<10)d-=2;
-    if(p.sick){d-=4;if(Math.random()<.18)p.sick=false}
+    if(p.sick){d-=3;if(Math.random()<(still?.4:.22))p.sick=false}
     if(d>=0&&!starving)d+=.5;
     p.hp=clamp(p.hp+d,0,100);
   });
-  G.morale=clamp(G.morale+[0,.5,0,-1][G.pace]+[0,-1,0,.5][G.ration]-(starving?4:0),0,100);
-  pickWeather();
+  G.morale=clamp(G.morale+(still?0:[0,.5,0,-1][G.pace])+[0,-1,0,.5][G.ration]-(starving?4:0),0,100);
+  const wasW=weather;pickWeather();
+  const bn=biome(G.miles).name;if(G.bn&&G.bn!==bn)msg('You enter the '+bn+'.');G.bn=bn;
+  if(weather!==wasW){if(weather==='rain')msg('Rain sets in.');else if(weather==='snow')msg('Snow begins to fall.');else msg('The weather clears.')}
   if(!quiet){
     if(Math.random()<.05&&al.length){const p=pick(al);if(!p.sick){p.sick=true;msg(esc(p.n)+' has fallen ill.')}}
     const nx=LM[G.lm+1];
     if(nx&&nx.m-G.miles>4&&Math.random()<.2)Q.push(randomEvent());
-    if(DEADLINE-G.day===30)msg('Thirty days until first frost.');
-    if(DEADLINE-G.day===10)msg('Ten days until first frost. Hurry.');
-    if(G.day===DEADLINE+1&&!G.f.late){G.f.late=1;G.morale=clamp(G.morale-8,0,100);Q.push({title:'First Frost',text:'You wake to white grass and breath like smoke. The frost has come. Whatever waits at Dry Creek, you are late.\n\nMara says nothing. Tobias counts the notches on his stick again, as if the number might change.'})}
     if(G.day%10===0)save();
+  }
+  const left=DEADLINE-G.day;
+  if(G.lm<10){
+    if(left<=30&&!G.f.w30){G.f.w30=1;msg('Thirty days until first frost.')}
+    if(left<=10&&!G.f.w10){G.f.w10=1;msg('Ten days until first frost. Hurry.')}
+    if(G.day>DEADLINE&&!G.f.late){G.f.late=1;G.morale=clamp(G.morale-8,0,100);Q.push({title:'First Frost',text:'You wake to white grass and breath like smoke. The frost has come. Whatever waits at Dry Creek, you are late.\n\nMara says nothing. Tobias counts the notches on his stick again, as if the number might change.'})}
   }
   checkDeaths();hud();
 }
 function checkDeaths(){
   G.party.forEach(p=>{
-    if(p.hp<=0&&!p.dead&&!p.left){p.dead=true;p.hp=0;G.morale=clamp(G.morale-12,0,100);jr(p.n+' died on the trail near '+biome(G.miles).name+'.');
+    if(p.hp<=0&&!p.dead&&!p.left){p.dead=true;p.hp=0;buzz([80,50,80]);G.morale=clamp(G.morale-12,0,100);jr(p.n+' died on the trail near '+biome(G.miles).name+'.');
       if(p.role==='you'){Q.length=0;Q.push(gameOverEvent())}else Q.push(deathEvent(p))}
   });
   if(!G.over&&alive().length===0){Q.length=0;Q.push(gameOverEvent())}
@@ -345,10 +374,15 @@ function arrive(){
    ===================================================================== */
 function hud(){
   if(mode==='title'||mode==='setup'){$('hud').innerHTML='';return}
-  const nx=LM[G.lm+1],left=Math.max(0,DEADLINE-G.day);
-  $('hud').innerHTML='<div class="chips"><span class="chip">📅 '+dateStr()+'</span><span class="chip">🧭 '+(nx?Math.ceil(nx.m-G.miles)+' mi to '+nx.name:'Journey’s end')+'</span><span class="chip">❄ Frost in '+left+'d</span></div>'+
-  '<div class="chips" style="margin-top:5px"><span class="chip">🍖 '+Math.round(G.food)+' lb</span><span class="chip">💰 $'+G.money+'</span><span class="chip">🔧 '+G.parts+'</span><span class="chip">🔫 '+G.ammo+'</span><span class="chip">❤ '+Math.round(G.morale)+'%</span></div>'+
-  '<div class="party">'+G.party.filter(p=>!p.left).map(p=>'<div class="mem '+(p.dead?'dead':'')+'">'+esc(p.n)+(p.sick?' 🤒':'')+'<div class="bar"><i style="width:'+p.hp+'%;background:'+(p.hp>60?'#6fbf5a':p.hp>30?'#e0b040':'#d9534f')+'"></i></div></div>').join('')+'</div>';
+  const nx=LM[G.lm+1],left=Math.max(0,DEADLINE-G.day),al=alive().length,lowFood=G.food<al*[0,1,2,3][G.ration]*4;
+  $('hud').innerHTML='<div class="chips r1"><span class="chip">\uD83D\uDCC5 '+dateStr(true)+' \u00B7 \u2744 '+left+'d</span><span class="chip">\uD83E\uDDED '+(nx?Math.ceil(nx.m-G.miles)+' mi \u2192 '+nx.name:'Journey\u2019s end')+'</span></div>'+
+  '<div class="chips r2" style="margin-top:5px"><span class="chip'+(lowFood?' warn':'')+'">\uD83C\uDF56 '+Math.round(G.food)+' lb</span><span class="chip">\uD83D\uDCB0 $'+G.money+'</span><span class="chip">\uD83D\uDD27 '+G.parts+'</span><span class="chip">\uD83D\uDD2B '+G.ammo+'</span><span class="chip'+(G.morale<25?' warn':'')+'">\u2764 '+Math.round(G.morale)+'%</span></div>'+
+  '<div class="party">'+G.party.filter(p=>!p.left).map(p=>'<div class="mem '+(p.dead?'dead':'')+'">'+esc(p.n)+(p.sick?' \uD83E\uDD12':'')+'<div class="bar"><i style="width:'+p.hp+'%;background:'+(p.hp>60?'#6fbf5a':p.hp>30?'#e0b040':'#d9534f')+'"></i></div></div>').join('')+'</div>';
+  const r=$('route');if(r)r.innerHTML=routeHtml();
+}
+function routeHtml(){
+  const total=LM[LM.length-1].m;
+  return LM.map((l,i)=>'<i class="'+(i<=G.lm?'v':'')+'" title="'+l.name+'" style="left:'+(l.m/total*100)+'%"></i>').join('')+'<b style="left:'+Math.min(100,G.miles/total*100)+'%"></b>';
 }
 function renderTitle(){
   G=blank();paused=false;hunt=null;mode='title';Q=[];camp=false;todT=null;weather='clear';$('hud').innerHTML='';
@@ -365,41 +399,52 @@ function renderSetup(){
   '<button class="big" data-a="kit" data-v="cash"><b>The Frugal</b><br><span style="font-weight:400">+$200 to spend at the forts.</span></button>';
 }
 function renderTravel(){
-  const sel=(a,v)=>'<button data-a="'+a+'" data-v="'+v[0]+'" class="'+(a==='pace'?G.pace:G.ration)+'" >'+v[1]+'</button>';
   const row=(a,cur,list)=>'<div class="grid3">'+list.map(v=>'<button data-a="'+a+'" data-v="'+v[0]+'" class="'+(cur==v[0]?'on':'')+'">'+v[1]+'</button>').join('')+'</div>';
-  $('panel').innerHTML='<div class="lbl">Pace</div>'+row('pace',G.pace,[[1,'Slow'],[2,'Steady'],[3,'Hurry']])+'<div class="lbl">Rations</div>'+row('ration',G.ration,[[1,'Scant'],[2,'Normal'],[3,'Full']])+
-  '<div class="grid4" style="margin-top:10px"><button data-a="hunt">🏹 Hunt</button><button data-a="rest">⛺ Rest</button><button data-a="journal">📖 Journal</button><button data-a="pause">'+(paused?'▶ Go':'⏸ Pause')+'</button></div><div id="msg" class="msg"></div>';
+  const paceH=['','10 miles a day. Gentle on everyone.','15 miles a day. A steady plod.','20 miles a day. Wears everyone down.'][G.pace];
+  const rationH=['','1 lb per person a day. Health suffers.','2 lb per person a day.','3 lb per person a day. Health recovers.'][G.ration];
+  const acts='<div class="grid4" style="margin-top:4px"><button data-a="hunt">\uD83C\uDFF9 Hunt</button><button data-a="rest">\u26FA Rest</button><button data-a="journal">\uD83D\uDCD6 Journal</button><button data-a="pause">'+(paused?'\u25B6 Go':'\u275A\u275A Pause')+'</button></div>';
+  $('panel').innerHTML='<div class="route" id="route">'+routeHtml()+'</div>'+acts+
+  '<div class="lbl">Pace</div>'+row('pace',G.pace,[[1,'Slow'],[2,'Steady'],[3,'Hurry']])+'<div class="hint">'+paceH+'</div>'+
+  '<div class="lbl">Rations</div>'+row('ration',G.ration,[[1,'Scant'],[2,'Normal'],[3,'Full']])+'<div class="hint">'+rationH+'</div>'+
+  '<div id="msg" class="msg"></div><div style="text-align:center"><button class="link" data-a="quit">Save and quit to title</button></div>';
   showMsg();
 }
+function fade(){const t=$('evt');if(t)t.classList.toggle('more',t.scrollHeight-t.scrollTop-t.clientHeight>6)}
+let skipped=false;
 function type(el,text,done){
   if(typing){clearInterval(typing.iv)}
-  let i=0,fin=false;el.textContent='';
-  const end=()=>{if(fin)return;fin=true;clearInterval(iv);typing=null;el.textContent=text;done&&done()};
-  const iv=setInterval(()=>{i+=2;el.textContent=text.slice(0,i);if(i>=text.length)end()},16);
-  typing={iv:iv,finish:end};
+  let i=0,fin=false;el.textContent='';skipped=false;
+  const sc=el.closest&&el.closest('.evt');
+  const end=(skip)=>{if(fin)return;fin=true;clearInterval(iv);typing=null;skipped=!!skip;el.textContent=text;if(sc)sc.scrollTop=skip?0:sc.scrollHeight;fade();done&&done()};
+  const iv=setInterval(()=>{i+=2;el.textContent=text.slice(0,i);if(sc)sc.scrollTop=sc.scrollHeight;if(i>=text.length)end(false)},16);
+  typing={iv:iv,finish:()=>end(true)};
 }
 function nextEvent(){
   if(Q.length){let e=Q.shift();if(typeof e==='function')e=e();showEvent(e)}else endEvents();
 }
 function endEvents(){
   if(G.over||mode==='end'||mode==='title')return;
-  mode='travel';camp=false;todT=null;renderTravel();hud();save();
+  $('hud').classList.remove('compact','res');
+  if(camp)todT=.28;camp=false;mode='travel';
+  if(!G.f.started){G.f.started=1;msg('The wagon rolls out. Watch your food and your people.')}
+  renderTravel();hud();save();
 }
-function showEvent(e){
-  if(mode!=='end')mode='event';cur=e;camp=!!e.camp;todT=e.camp?.93:null;
-  $('panel').innerHTML='<h2>'+e.title+'</h2><div class="story'+(e.letter?' letter':'')+'" id="st"></div><div id="ch"></div>';
-  $('panel').scrollTop=0;hud();
-  type($('st'),e.text,()=>showChoices(e));
+function showEvent(e,instant){
+  $('hud').classList.toggle('compact',!e.keepHud);$('hud').classList.toggle('res',e.keepHud==='res');
+  const wasCamp=camp;if(mode!=='end')mode='event';cur=e;camp=!!e.camp;todT=e.camp?.93:(wasCamp?.28:null);
+  $('panel').innerHTML='<div class="ev"><div class="evt" id="evt"><h2>'+e.title+'</h2><div class="story'+(e.letter?' letter':'')+'" id="st"></div></div><div class="evc" id="ch"></div></div>';
+  hud();$('evt').addEventListener('scroll',fade);
+  if(instant){$('st').textContent=e.text;skipped=true;showChoices(e);fade()}else type($('st'),e.text,()=>showChoices(e));
 }
 function showChoices(e){
   const list=(e.choices&&e.choices.length)?e.choices:[{t:'Continue'}],box=$('ch');if(!box)return;box.innerHTML='';
   list.forEach(c=>{
     if(c.if&&!c.if())return;
-    const b=document.createElement('button');b.className='big';b.textContent=c.t;
+    const b=document.createElement('button');b.className='big'+(e.sm?' sm':'');b.textContent=c.t;
     if(c.dis&&c.dis()){b.disabled=true;b.textContent+=' — '+(c.why||'unavailable')}
     b.onclick=()=>choose(c);box.appendChild(b);
   });
-  $('panel').scrollTop=$('panel').scrollHeight;
+  const t=$('evt');if(t&&!skipped)t.scrollTop=t.scrollHeight;fade();
 }
 function choose(c){
   const r=c.go?c.go():c;
@@ -413,7 +458,7 @@ function outcome(text,tags,after){
   $('ch').innerHTML='';
   type($('st'),text,()=>{
     $('ch').innerHTML=tags;const b=document.createElement('button');b.className='big';b.textContent='Continue';b.style.textAlign='center';
-    b.onclick=()=>{if(after)after();nextEvent()};$('ch').appendChild(b);$('panel').scrollTop=$('panel').scrollHeight;
+    b.onclick=()=>{if(after)after();nextEvent()};$('ch').appendChild(b);const t=$('evt');if(t&&!skipped)t.scrollTop=t.scrollHeight;fade();
   });
 }
 function ch(o){
@@ -425,8 +470,9 @@ function ch(o){
     else if(k==='ammo'){G.ammo=Math.max(0,G.ammo+v);t.push(['🔫 Ammo',v])}
     else if(k==='morale'){G.morale=clamp(G.morale+v,0,100);t.push(['❤ Morale',v])}
     else if(k==='hp'){alive().forEach(p=>p.hp=clamp(p.hp+v,0,100));t.push(['✚ Health (all)',v])}
-    else if(k==='days'){for(let i=0;i<v;i++)dayTick(true);t.push(['⏳ Days',v])}
+    else if(k==='days'){for(let i=0;i<v;i++)dayTick(true,true);t.push(['⏳ Days',v])}
   }
+  if(t.some(x=>x[1]<0&&x[0].indexOf('Days')<0))buzz(30);
   return '<div class="tags">'+t.map(x=>'<b class="'+(x[1]>0?(x[0].indexOf('Days')>=0?'dn':'up'):'dn')+'">'+x[0]+' '+(x[1]>0?'+':'')+x[1]+'</b>').join('')+'</div>';
 }
 function showJournal(){
@@ -437,7 +483,7 @@ function showJournal(){
 
 /* ---------- input ---------- */
 $('panel').addEventListener('click',e=>{
-  if(e.target.id==='st'&&typing){typing.finish();return}
+  if(typing&&!e.target.closest('button')){typing.finish();return}
   const b=e.target.closest('[data-a]');if(!b)return;act(b.dataset.a,b.dataset.v);
 });
 cv.addEventListener('pointerdown',e=>{
@@ -445,23 +491,25 @@ cv.addEventListener('pointerdown',e=>{
 });
 function act(a,v){
   if(a==='new'){renderSetup()}
-  else if(a==='cont'){if(load()){mode='travel';paused=false;speedNow=0;renderTravel();hud()}}
+  else if(a==='cont'){if(load()){Q=[];camp=false;todT=null;dayAcc=0;mode='travel';paused=false;speedNow=0;renderTravel();hud()}}
   else if(a==='kit'){startGame(v)}
   else if(a==='pace'){G.pace=+v;renderTravel()}
   else if(a==='ration'){G.ration=+v;renderTravel()}
   else if(a==='pause'){paused=!paused;renderTravel()}
   else if(a==='journal'){showJournal()}
-  else if(a==='close'){paused=false;if(mode==='end')showEvent(cur);else renderTravel()}
+  else if(a==='quit'){save();renderTitle()}
+  else if(a==='close'){paused=false;if(mode==='end')showEvent(cur,true);else renderTravel()}
   else if(a==='hunt'){startHunt()}
   else if(a==='rest'){
     if(mode!=='travel')return;
-    for(let i=0;i<2;i++)dayTick(true);
+    for(let i=0;i<2;i++)dayTick(true,true);
     alive().forEach(p=>{p.hp=clamp(p.hp+8,0,100);if(p.sick&&Math.random()<.5)p.sick=false});
     G.morale=clamp(G.morale+2,0,100);msg('You rest for two days. Mending, mostly.');hud();
     if(Q.length)nextEvent();
   }
 }
 function startGame(kit){
+  Q=[];camp=false;todT=null;hunt=null;
   const nm=($('nm').value||'').trim().slice(0,14)||'Ada';
   G=blank();G.name=nm;G.party[0].n=nm;
   if(kit==='prov')G.food+=180;else if(kit==='safe'){G.parts+=2;G.ammo+=30}else G.money+=200;
@@ -482,27 +530,27 @@ function startGame(kit){
 function startHunt(){
   if(mode!=='travel')return;
   if(G.ammo<=0){msg('No ammunition left.');return}
-  mode='hunt';hunt={t:14,bag:0,shots:0,animals:[],spawn:0,recoil:0};camp=false;
-  $('panel').innerHTML='<h2>The Hunt</h2><div class="hunt"><span>⏱ <b id="hT">14</b>s</span><span>🔫 <b id="hA">'+G.ammo+'</b></span><span>🍖 <b id="hB">0</b> lb</span></div><p class="fine">Tap the animals on the screen. Each tap costs one bullet. You can carry 200 lb of meat.</p>';
+  $('hud').classList.remove('compact','res');mode='hunt';hunt={t:14,bag:0,shots:0,animals:[],spawn:0,recoil:0};camp=false;
+  $('panel').innerHTML='<h2>The Hunt</h2><div class="hunt"><span>⏱ <b id="hT">14</b>s</span><span>🔫 <b id="hA">'+G.ammo+'</b></span><span>🍖 <b id="hB">0</b> lb</span></div><p class="fine">Tap the animals on the screen. Each tap costs one bullet. You can carry 150 lb of meat.</p>';
 }
 function updateHunt(dt){
   hunt.t-=dt;hunt.spawn-=dt;hunt.recoil=Math.max(0,hunt.recoil-dt*4);
   if(hunt.spawn<=0){hunt.spawn=rnd(.45,.9);const r=Math.random(),type=r<.45?'rabbit':r<.85?'deer':'bison',dir=Math.random()<.5?1:-1,sp={rabbit:[70,110],deer:[50,80],bison:[22,34]}[type];
-    hunt.animals.push({type:type,x:dir>0?-20:W+20,y:rnd(122,168),vx:dir*rnd(sp[0],sp[1]),ph:Math.random()*6,val:{rabbit:6,deer:45,bison:110}[type]})}
+    hunt.animals.push({type:type,x:dir>0?-20:W+20,y:rnd(122,168),vx:dir*rnd(sp[0],sp[1]),ph:Math.random()*6,val:{rabbit:4,deer:30,bison:80}[type]})}
   hunt.animals=hunt.animals.filter(a=>{a.x+=a.vx*dt;return a.x>-40&&a.x<W+40});
   const el=$('hT');if(el){el.textContent=Math.max(0,Math.ceil(hunt.t));$('hA').textContent=G.ammo;$('hB').textContent=hunt.bag}
   if(hunt.t<=0||G.ammo<=0)endHunt();
 }
 function shoot(x,y){
   if(!hunt||G.ammo<=0)return;
-  G.ammo--;hunt.shots++;hunt.recoil=.35;
+  G.ammo--;hunt.shots++;hunt.recoil=.35;pings.push({x:x,y:y,l:.3});buzz(12);
   let best=null,bd=1e9;
   hunt.animals.forEach(a=>{const sz={rabbit:10,deer:16,bison:22}[a.type],dx=Math.abs(x-a.x),dy=Math.abs(y-(a.y-sz*.5));if(dx<sz+8&&dy<sz+10&&dx+dy<bd){bd=dx+dy;best=a}});
   if(best){const val=Math.round(best.val*(member('Wren')&&!member('Wren').dead?1.25:1));hunt.bag+=val;hunt.animals.splice(hunt.animals.indexOf(best),1);floats.push({x:best.x-8,y:best.y-12,t:'+'+val+' lb',l:1.2});for(let i=0;i<8;i++)sparks.push({x:best.x,y:best.y-6,vx:rnd(-30,30),vy:-rnd(10,40),l:.5})}
   else floats.push({x:x-6,y:y,t:'miss',l:.6});
 }
 function endHunt(){
-  const got=Math.min(hunt.bag,200),left=hunt.bag-got,shots=hunt.shots;hunt=null;mode='event';
+  const got=Math.min(hunt.bag,150),left=hunt.bag-got,shots=hunt.shots;hunt=null;mode='event';
   const text=got>0?'The shots echo and die across the grass. You dress the kill and haul '+got+' pounds of meat back to the wagon.'+(left>0?' The rest you leave for the wolves; there is no room.':''):'You return empty-handed, with grass in your hair and a lesson in patience.';
   Q.push({title:'The Hunt',text:text,choices:[{t:'Continue',go:()=>({text:'A day well spent, or at least spent.',fx:{food:got,days:1}})}]});
   nextEvent();
@@ -512,7 +560,7 @@ function endHunt(){
    STORY
    ===================================================================== */
 function shopEvent(name,flav){
-  return{title:name+' — Trading Post',text:flav+'\n\nYou have $'+G.money+'.',choices:[
+  return{keepHud:'res',sm:true,title:name+' — Trading Post',text:flav+'\n\nYou have $'+G.money+'.',choices:[
    {t:'Food, 100 lb — $18',dis:()=>G.money<18,why:'not enough money',go:()=>({text:'Salt pork and flour, weighed out on a brass scale.',fx:{money:-18,food:100},after:()=>Q.unshift(shopEvent(name,flav))})},
    {t:'Ammunition, 20 rounds — $8',dis:()=>G.money<8,why:'not enough money',go:()=>({text:'Paper cartridges, counted twice.',fx:{money:-8,ammo:20},after:()=>Q.unshift(shopEvent(name,flav))})},
    {t:'Spare wheel or axle — $25',dis:()=>G.money<25,why:'not enough money',go:()=>({text:'Good seasoned oak. Heavy, but worth it.',fx:{money:-25,parts:1},after:()=>Q.unshift(shopEvent(name,flav))})},
@@ -578,7 +626,7 @@ const STORY={
  },
  6:()=>{
    const wren=member('Wren'),hol=member('Hollis');
-   Q.push({title:'South Pass',text:'Snow in the pass, in June. The wind drives it sideways. The oxen lean into their yokes like men walking into prison.\n\nOn the ridge behind you, tiny against the white: four riders, keeping pace, never closing.\n\n'+((wren&&!wren.dead)?'“Company guns,” Wren says quietly. “Marsh doesn’t ride himself. He pays.”':'“Been on us since the fork,” Hollis says. “Hired men have a look about them.”'),choices:[
+   Q.push({title:'South Pass',text:'Snow in the pass, in what ought to be summer. The wind drives it sideways. The oxen lean into their yokes like men walking into prison.\n\nOn the ridge behind you, tiny against the white: four riders, keeping pace, never closing.\n\n'+((wren&&!wren.dead)?'“Company guns,” Wren says quietly. “Marsh doesn’t ride himself. He pays.”':'“Been on us since the fork,” Hollis says. “Hired men have a look about them.”'),choices:[
      {t:'Take the high cut-off: faster, but brutal.',go:()=>({text:'You lose the riders in the whiteout. Mara’s lips are blue and Tobias coughs the whole night, but behind you the ridge is empty.',fx:{hp:-15,parts:Math.random()<.25?-1:0}})},
      {t:'Take the valley road: safer, but they will close in.',go:()=>({text:'The valley is sheltered and slow. The riders are a little nearer every dawn.',fx:{food:-15}})},
      {t:'Make a stand at the narrows. (10 ammo)',dis:()=>G.ammo<10,why:'not enough ammo',go:()=>({text:'A few shots from the rocks are enough to make hired men reconsider their wages.',run:()=>{G.f.stand=1;G.f.delayed=1},fx:{ammo:-10,hp:-5,morale:5}})}]});
@@ -614,6 +662,7 @@ const STORY={
         if(Math.random()<p)return{text:'A short, ugly fight in the fog. When it ends, Marsh’s men are running downhill and Marsh himself has vanished into the trees.',run:()=>{G.f.marshFled=1},fx:{ammo:-10,hp:-10,morale:8}};
         return{text:'The fog gives them the advantage. When it’s over, your wagon is tipped and Marsh walks away with the tin box under his arm.',run:()=>{G.f.sold=1},fx:{ammo:-15,hp:-25,food:-50,morale:-15}}}},
      {t:'Bluff: tell Marsh what you know.',dis:()=>G.clues<3,why:'you don’t know enough yet',go:()=>({text:'You speak steadily. The note on company stationery. The offer at Fort Laramie. Elias’s letter. The word “ledger” lands like a stone in a pond.\n\nMarsh’s face goes very still. “You can’t prove it.”\n“Not yet,” you say.\n\nFor a long moment the fog is the loudest thing in the world. Then he steps aside. “Dry Creek, then. Let us see who arrives first.”',run:()=>{G.f.bluff=1},fx:{morale:10}})},
+     {t:'Say nothing and push past.',go:()=>({text:'You walk the ledge with your eyes ahead and your hands where he can see them. Marsh lets you pass, but his men watch every step.\n\n\u201CThe Dalles is not far,\u201D he says, almost kindly. \u201CAnd I know every road to it.\u201D',fx:{morale:-6,food:-30}})},
      {t:'Wren leads his men astray.',if:()=>{const w=member('Wren');return w&&!w.dead&&G.f.wrenTrust},go:()=>({text:'Wren slips away along a goat track. By the time Marsh realizes, her voice and his men’s have drifted a quarter-mile off through the fog. You pass.',run:()=>{G.f.trick=1},fx:{hp:-5,morale:8}})}]});
  },
  10:()=>{
@@ -649,7 +698,7 @@ function deathEvent(p){
   return{title:p.n+' is gone',camp:true,text:t[p.n]||(p.n+' dies on the trail.')};
 }
 function gameOverEvent(){
-  G.over=true;
+  G.over=true;try{localStorage.removeItem('llw1')}catch(e){}
   return{title:'The Trail Takes All',camp:true,text:'The wagon stands where it stopped, canvas snapping in the wind. In the tin box there is a deed, and in the oilcloth under the seat a letter that begins “Come now.”\n\nPerhaps someone will find it. Perhaps they will read it through.',choices:[{t:'Return to the title',go:()=>({stop:true,run:()=>{renderTitle()}})}]};
 }
 function endGame(kind){
@@ -672,7 +721,7 @@ function endGame(kind){
   }
   const fate=(dead.length?'\n\nLost on the road: '+dead.join(', ')+'.':'\n\nEveryone who left Independence reached the valley.')+(f.wrenGone?' Wren was never seen again.':'');
   const stats='\n\nDays on the road: '+G.day+'.  Survivors: '+al+'/'+G.party.filter(p=>!p.left).length+'.  Clues found: '+G.clues+'.';
-  jr('ENDING: '+title);
+  jr('ENDING: '+title);try{localStorage.removeItem('llw1')}catch(e){}
   Q.length=0;mode='end';G.over=true;
   Q.push({title:title,camp:false,text:text+fate+stats,choices:[
     {t:'Read the journal',go:()=>({stop:true,run:()=>{showJournal()}})},
@@ -741,6 +790,10 @@ function frame(ts){
 }
 renderTitle();
 requestAnimationFrame(frame);
+let wl=null;
+function keepAwake(){try{if(navigator.wakeLock&&!wl){navigator.wakeLock.request('screen').then(l=>{wl=l;l.addEventListener('release',()=>{wl=null})}).catch(()=>{})}}catch(e){}}
+document.addEventListener('pointerdown',keepAwake);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)keepAwake()});
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 </script>
 </body>
