@@ -1,0 +1,14 @@
+{
+  "name": "The Last Letter West",
+  "short_name": "Last Letter",
+  "description": "An offline wagon-trail story game, 1848.",
+  "start_url": "index.html",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#1b1410",
+  "theme_color": "#1b1410",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
